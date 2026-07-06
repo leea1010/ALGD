@@ -1,0 +1,990 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Điệp Viên Lộ Mặt</title>
+<style>
+  :root{
+    --bg:#0d1210;
+    --bg-elevated:#161d19;
+    --card:#1b2420;
+    --paper:#e9e2cf;
+    --ink:#211d16;
+    --text:#dfe6df;
+    --text-muted:#889186;
+    --accent:#c1392b;
+    --accent-2:#cf9f3f;
+    --line:#333e37;
+    --line-strong:#4a564d;
+    --shadow: 0 20px 50px rgba(0,0,0,.55);
+    --font-display: "Arial Black", "Segoe UI", Arial, sans-serif;
+    --font-body: "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    --font-mono: Consolas, "Courier New", monospace;
+  }
+  @media (prefers-color-scheme: light){
+    :root{
+      --bg:#ece4d0;
+      --bg-elevated:#f5f0e1;
+      --card:#fbf8ee;
+      --paper:#fbf8ee;
+      --ink:#211d16;
+      --text:#2b2721;
+      --text-muted:#79705d;
+      --accent:#a3312a;
+      --accent-2:#93701e;
+      --line:#dcd2b8;
+      --line-strong:#c8bc9c;
+      --shadow: 0 16px 40px rgba(60,50,20,.18);
+    }
+  }
+
+  *{box-sizing:border-box;}
+  html,body{height:100%;}
+  body{
+    margin:0;
+    min-height:100vh;
+    font-family:var(--font-body);
+    color:var(--text);
+    background:
+      repeating-linear-gradient(0deg, rgba(255,255,255,.015) 0px, rgba(255,255,255,.015) 1px, transparent 1px, transparent 3px),
+      radial-gradient(ellipse at 50% -10%, rgba(207,159,63,.10), transparent 55%),
+      radial-gradient(ellipse at 50% 110%, rgba(0,0,0,.35), transparent 60%),
+      var(--bg);
+    display:flex;
+    align-items:flex-start;
+    justify-content:center;
+    padding:28px 14px 60px;
+    overflow-x:hidden;
+  }
+  .stage{
+    width:100%;
+    max-width:460px;
+  }
+
+  .masthead{
+    text-align:center;
+    margin-bottom:16px;
+  }
+  .masthead .kicker{
+    font-family:var(--font-mono);
+    font-size:11px;
+    letter-spacing:.28em;
+    color:var(--accent-2);
+    text-transform:uppercase;
+  }
+  .masthead h1{
+    font-family:var(--font-display);
+    font-size:26px;
+    letter-spacing:.04em;
+    margin:4px 0 0;
+    text-wrap:balance;
+  }
+  .masthead h1 .pop{
+    color:var(--accent);
+  }
+
+  .dossier{
+    position:relative;
+    background:var(--bg-elevated);
+    border:1px solid var(--line-strong);
+    border-radius:6px;
+    box-shadow:var(--shadow);
+    overflow:hidden;
+  }
+  .dossier::before{
+    content:"";
+    position:absolute;
+    inset:0;
+    pointer-events:none;
+    border:1px solid rgba(255,255,255,.03);
+    border-radius:6px;
+  }
+
+  .topbar{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:10px;
+    padding:12px 16px;
+    border-bottom:1px dashed var(--line-strong);
+    font-family:var(--font-mono);
+    font-size:12px;
+  }
+  .case-no{
+    color:var(--text-muted);
+    letter-spacing:.05em;
+    font-variant-numeric:tabular-nums;
+  }
+  .case-no b{color:var(--text);font-weight:700;}
+  .scorebug{
+    display:flex;
+    align-items:center;
+    gap:6px;
+    font-variant-numeric:tabular-nums;
+    color:var(--text-muted);
+  }
+  .scorebug b{color:var(--text);}
+  .scorebug .vs{opacity:.5;}
+
+  .view{ padding:22px 18px 24px; min-height:400px; display:flex; flex-direction:column; }
+  .view[hidden]{ display:none; }
+
+  h2.view-title{
+    font-family:var(--font-display);
+    font-size:15px;
+    letter-spacing:.09em;
+    text-transform:uppercase;
+    color:var(--text-muted);
+    margin:0 0 16px;
+  }
+
+  /* setup view */
+  .stamp{
+    position:absolute;
+    top:52px; right:-10px;
+    font-family:var(--font-mono);
+    font-weight:700;
+    font-size:12px;
+    letter-spacing:.18em;
+    color:var(--accent);
+    border:2px solid var(--accent);
+    padding:4px 10px;
+    border-radius:3px;
+    transform:rotate(8deg);
+    opacity:.55;
+    user-select:none;
+  }
+
+  .field-row{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding:12px 0;
+    border-bottom:1px solid var(--line);
+  }
+  .field-row label{
+    font-size:14px;
+    color:var(--text);
+  }
+  .field-row .hint{
+    display:block;
+    font-size:11.5px;
+    color:var(--text-muted);
+    margin-top:2px;
+  }
+  .stepper{
+    display:flex;
+    align-items:center;
+    gap:2px;
+    font-family:var(--font-mono);
+  }
+  .stepper button{
+    width:30px;height:30px;
+    border-radius:4px;
+    border:1px solid var(--line-strong);
+    background:var(--card);
+    color:var(--text);
+    font-size:16px;
+    line-height:1;
+    cursor:pointer;
+  }
+  .stepper button:hover{border-color:var(--accent-2);}
+  .stepper output{
+    min-width:28px;
+    text-align:center;
+    font-size:15px;
+    font-variant-numeric:tabular-nums;
+  }
+
+  .names-wrap{
+    margin-top:6px;
+    max-height:190px;
+    overflow-y:auto;
+    display:flex;
+    flex-direction:column;
+    gap:8px;
+    padding-right:2px;
+  }
+  .name-input{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    font-family:var(--font-mono);
+    font-size:12px;
+    color:var(--text-muted);
+  }
+  .name-input span{width:20px;text-align:right;}
+  .name-input input{
+    flex:1;
+    background:var(--card);
+    border:1px solid var(--line);
+    border-radius:4px;
+    color:var(--text);
+    font-family:var(--font-body);
+    font-size:14px;
+    padding:8px 10px;
+  }
+  .name-input input:focus-visible{outline:2px solid var(--accent-2);outline-offset:1px;}
+
+  .btn{
+    appearance:none;
+    border:none;
+    border-radius:5px;
+    padding:13px 18px;
+    font-family:var(--font-display);
+    font-size:13px;
+    letter-spacing:.08em;
+    text-transform:uppercase;
+    cursor:pointer;
+    text-align:center;
+  }
+  .btn:focus-visible{outline:2px solid var(--accent-2);outline-offset:2px;}
+  .btn-primary{
+    background:var(--accent);
+    color:#fbf3ee;
+    margin-top:18px;
+  }
+  .btn-primary:hover{filter:brightness(1.08);}
+  .btn-ghost{
+    background:transparent;
+    color:var(--text-muted);
+    border:1px solid var(--line-strong);
+  }
+  .btn-ghost:hover{color:var(--text);border-color:var(--accent-2);}
+  .btn-outline{
+    background:transparent;
+    color:var(--text);
+    border:1px solid var(--line-strong);
+  }
+  .btn-outline:hover{border-color:var(--accent-2);}
+
+  .link-quiet{
+    background:none;border:none;color:var(--text-muted);
+    font-size:12px;text-decoration:underline;cursor:pointer;padding:6px 0;
+    font-family:var(--font-body);
+  }
+  .link-quiet:hover{color:var(--accent);}
+
+  /* reveal view */
+  .pass-note{
+    text-align:center;
+    color:var(--text-muted);
+    font-size:12.5px;
+    font-family:var(--font-mono);
+    letter-spacing:.05em;
+    margin-bottom:8px;
+  }
+  .player-name{
+    text-align:center;
+    font-family:var(--font-display);
+    font-size:22px;
+    letter-spacing:.02em;
+    margin:0 0 18px;
+    text-wrap:balance;
+  }
+
+  .card-zone{
+    position:relative;
+    background:var(--paper);
+    border-radius:6px;
+    padding:26px 20px;
+    min-height:150px;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    text-align:center;
+    box-shadow: inset 0 0 0 1px rgba(0,0,0,.08);
+    user-select:none;
+    -webkit-tap-highlight-color:transparent;
+    touch-action:none;
+  }
+  .card-zone .role{
+    font-family:var(--font-mono);
+    font-size:12px;
+    letter-spacing:.14em;
+    text-transform:uppercase;
+    color:var(--ink);
+    opacity:.6;
+    margin-bottom:8px;
+  }
+  .card-zone .word-emoji{
+    font-size:54px;
+    line-height:1;
+    margin-bottom:10px;
+    filter:drop-shadow(0 2px 3px rgba(0,0,0,.25));
+  }
+  .card-zone .word{
+    font-family:var(--font-display);
+    font-size:27px;
+    color:var(--ink);
+    text-wrap:balance;
+  }
+  .card-zone.is-spy .role,
+  .card-zone.is-spy .word{ color:var(--accent); }
+
+  .redaction{
+    position:absolute; inset:0;
+    background:
+      repeating-linear-gradient(135deg, #14100b 0 3px, #1a1610 3px 6px);
+    border-radius:6px;
+    display:flex;align-items:center;justify-content:center;
+    transition:opacity .12s ease, transform .12s ease;
+  }
+  .redaction span{
+    font-family:var(--font-mono);
+    font-size:12px;
+    letter-spacing:.22em;
+    color:#8a8378;
+    text-transform:uppercase;
+  }
+  .card-zone.revealed .redaction{
+    opacity:0;
+    transform:scale(1.02);
+    pointer-events:none;
+  }
+  @media (prefers-reduced-motion: reduce){
+    .redaction{ transition:none; }
+  }
+
+  .hold-hint{
+    text-align:center;
+    font-size:12px;
+    color:var(--text-muted);
+    margin-top:10px;
+    font-family:var(--font-mono);
+  }
+
+  .nav-row{
+    display:flex;
+    gap:10px;
+    margin-top:auto;
+    padding-top:20px;
+  }
+  .nav-row .btn{flex:1;}
+
+  .progress-dots{
+    display:flex;
+    justify-content:center;
+    gap:6px;
+    margin:16px 0 4px;
+  }
+  .progress-dots i{
+    width:6px;height:6px;border-radius:50%;
+    background:var(--line-strong);
+  }
+  .progress-dots i.done{background:var(--accent-2);}
+  .progress-dots i.current{background:var(--accent);}
+
+  /* discussion view */
+  .timer{
+    text-align:center;
+    font-family:var(--font-mono);
+    font-size:52px;
+    font-variant-numeric:tabular-nums;
+    letter-spacing:.02em;
+    margin:18px 0 6px;
+    color:var(--text);
+  }
+  .timer-controls{
+    display:flex;
+    gap:8px;
+    justify-content:center;
+    margin-bottom:10px;
+  }
+  .timer-controls .btn{padding:9px 14px;font-size:11px;}
+
+  /* results view */
+  .result-block{
+    background:var(--card);
+    border:1px solid var(--line);
+    border-radius:5px;
+    padding:14px 16px;
+    margin-bottom:12px;
+  }
+  .result-block .cat{
+    font-family:var(--font-mono);
+    font-size:10.5px;
+    letter-spacing:.16em;
+    text-transform:uppercase;
+    color:var(--text-muted);
+    margin-bottom:8px;
+  }
+  .word-pair{
+    display:flex;
+    justify-content:space-between;
+    gap:10px;
+  }
+  .word-pair div{flex:1;}
+  .word-pair .lbl{
+    font-family:var(--font-mono);
+    font-size:10.5px;
+    color:var(--text-muted);
+    letter-spacing:.08em;
+    text-transform:uppercase;
+    margin-bottom:3px;
+  }
+  .word-pair .w{
+    font-family:var(--font-display);
+    font-size:17px;
+  }
+  .word-pair .spyw{color:var(--accent);}
+
+  .spy-list{
+    display:flex;
+    flex-wrap:wrap;
+    gap:6px;
+    margin:4px 0 4px;
+  }
+  .chip{
+    font-family:var(--font-mono);
+    font-size:12px;
+    padding:5px 10px;
+    border-radius:20px;
+    background:rgba(193,57,43,.14);
+    color:var(--accent);
+    border:1px solid rgba(193,57,43,.35);
+  }
+
+  .verdict-row{
+    display:flex;
+    gap:10px;
+    margin-top:6px;
+  }
+  .verdict-row .btn{flex:1;padding:14px 10px;font-size:12px;}
+  .btn-civ{background:var(--accent-2);color:#1c1608;}
+  .btn-civ:hover{filter:brightness(1.08);}
+  .btn-spy{background:var(--accent);color:#fbf3ee;}
+  .btn-spy:hover{filter:brightness(1.08);}
+
+  .next-round{
+    text-align:center;
+    margin-top:16px;
+  }
+
+  footer{
+    text-align:center;
+    margin-top:16px;
+  }
+  footer .link-quiet{font-size:11.5px;}
+
+  @media (max-width:380px){
+    .masthead h1{font-size:22px;}
+    .timer{font-size:44px;}
+  }
+</style>
+</head>
+<body>
+
+<div class="stage">
+  <div class="masthead">
+    <div class="kicker">Trò chơi chuyền tay &middot; Tìm ra kẻ giấu mặt</div>
+    <h1>ĐIỆP VIÊN <span class="pop">LỘ MẶT</span></h1>
+  </div>
+
+  <div class="dossier">
+    <div class="topbar">
+      <div class="case-no" id="caseNoLabel">HỒ SƠ <b>—/20</b></div>
+      <div class="scorebug"><b id="scoreCiv">0</b> Dân thường <span class="vs">/</span> Gián điệp <b id="scoreSpy">0</b></div>
+    </div>
+
+    <!-- SETUP VIEW -->
+    <div class="view" id="view-setup">
+      <span class="stamp">MẬT</span>
+      <h2 class="view-title">Chuẩn bị nhiệm vụ</h2>
+
+      <div class="field-row">
+        <div>
+          <label>Số người chơi</label>
+          <span class="hint">Tối thiểu 3 người</span>
+        </div>
+        <div class="stepper">
+          <button type="button" id="playersMinus" aria-label="Giảm số người chơi">–</button>
+          <output id="playersCount">5</output>
+          <button type="button" id="playersPlus" aria-label="Tăng số người chơi">+</button>
+        </div>
+      </div>
+
+      <div class="field-row">
+        <div>
+          <label>Số gián điệp</label>
+          <span class="hint">Giấu trong nhóm dân thường</span>
+        </div>
+        <div class="stepper">
+          <button type="button" id="spiesMinus" aria-label="Giảm số gián điệp">–</button>
+          <output id="spiesCount">1</output>
+          <button type="button" id="spiesPlus" aria-label="Tăng số gián điệp">+</button>
+        </div>
+      </div>
+
+      <div class="names-wrap" id="namesWrap"></div>
+
+      <button class="btn btn-primary" id="startBtn">Triển khai nhiệm vụ</button>
+      <div style="text-align:center;">
+        <button class="link-quiet" id="resetBtn">Xoá toàn bộ tiến trình (20 hồ sơ)</button>
+      </div>
+    </div>
+
+    <!-- REVEAL VIEW -->
+    <div class="view" id="view-reveal" hidden>
+      <div class="pass-note">Chuyền máy cho người tiếp theo, đừng để ai khác nhìn thấy</div>
+      <div class="player-name" id="revealName">—</div>
+
+      <div class="card-zone" id="cardZone">
+        <div class="role" id="cardRole">VAI TRÒ</div>
+        <div class="word-emoji" id="cardEmoji" aria-hidden="true">❔</div>
+        <div class="word" id="cardWord">???</div>
+        <div class="redaction" id="redactionBar"><span>Giữ để xem</span></div>
+      </div>
+      <div class="hold-hint">Giữ (nhấn &amp; không thả) để xem hồ sơ &middot; Thả tay để giấu lại</div>
+
+      <div class="progress-dots" id="progressDots"></div>
+
+      <div class="nav-row">
+        <button class="btn btn-outline" id="nextPlayerBtn" disabled>Tiếp theo</button>
+      </div>
+    </div>
+
+    <!-- DISCUSSION VIEW -->
+    <div class="view" id="view-discuss" hidden>
+      <h2 class="view-title">Thảo luận &amp; bỏ phiếu</h2>
+      <p style="text-align:center;color:var(--text-muted);font-size:13px;">Mọi người lần lượt mô tả từ của mình. Cùng thảo luận và chỉ ra ai là gián điệp.</p>
+      <div class="timer" id="timerDisplay">03:00</div>
+      <div class="timer-controls">
+        <button class="btn btn-outline" id="timerToggle">Bắt đầu</button>
+        <button class="btn btn-ghost" id="timerAdd30">+30 giây</button>
+        <button class="btn btn-ghost" id="timerReset">Đặt lại</button>
+      </div>
+      <div class="nav-row">
+        <button class="btn btn-primary" id="revealResultBtn">Mở hồ sơ kết quả</button>
+      </div>
+    </div>
+
+    <!-- RESULTS VIEW -->
+    <div class="view" id="view-results" hidden>
+      <h2 class="view-title">Kết quả hồ sơ</h2>
+
+      <div class="result-block">
+        <div class="cat" id="resultCat">HẠNG MỤC</div>
+        <div class="word-pair">
+          <div>
+            <div class="lbl">Dân thường</div>
+            <div class="w"><span id="resultCivEmoji"></span> <span id="resultCivWord">—</span></div>
+          </div>
+          <div>
+            <div class="lbl">Gián điệp</div>
+            <div class="w spyw"><span id="resultSpyEmoji"></span> <span id="resultSpyWord">—</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="result-block">
+        <div class="cat">Danh tính gián điệp</div>
+        <div class="spy-list" id="spyList"></div>
+      </div>
+
+      <p style="text-align:center;color:var(--text-muted);font-size:13px;margin:2px 0 0;">Ai đã thắng lượt này?</p>
+      <div class="verdict-row">
+        <button class="btn btn-civ" id="verdictCiv">Dân thường</button>
+        <button class="btn btn-spy" id="verdictSpy">Gián điệp</button>
+      </div>
+
+      <div class="next-round" id="nextRoundWrap" hidden>
+        <button class="btn btn-primary" id="nextRoundBtn">Hồ sơ tiếp theo</button>
+      </div>
+    </div>
+  </div>
+
+  <footer>
+    <button class="link-quiet" id="editBtn" hidden>← Sửa lại danh sách người chơi</button>
+  </footer>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  // [ hạng mục, từ dân thường, emoji dân thường, từ gián điệp, emoji gián điệp ]
+  var PAIRS = [
+    ["Đồ uống","Cà phê","☕","Trà","🍵"],
+    ["Đồ uống","Trà sữa","🧋","Sinh tố","🥤"],
+    ["Món ăn","Phở","🍜","Bún bò","🍲"],
+    ["Món ăn","Bánh mì","🥖","Bánh bao","🥟"],
+    ["Món ăn","Pizza","🍕","Mì Ý","🍝"],
+    ["Món ăn","Sushi","🍣","Sashimi","🐟"],
+    ["Động vật","Chó","🐶","Sói","🐺"],
+    ["Động vật","Mèo","🐱","Hổ","🐯"],
+    ["Động vật","Cá voi","🐋","Cá heo","🐬"],
+    ["Động vật","Voi","🐘","Tê giác","🦏"],
+    ["Nghề nghiệp","Bác sĩ","🩺","Y tá","💉"],
+    ["Nghề nghiệp","Cảnh sát","👮","Bộ đội","🎖️"],
+    ["Địa điểm","Biển","🏖️","Hồ","🏞️"],
+    ["Địa điểm","Núi","⛰️","Đồi","🌄"],
+    ["Đồ vật","Laptop","💻","Máy tính bàn","🖥️"],
+    ["Phương tiện","Xe máy","🏍️","Xe đạp","🚲"],
+    ["Phương tiện","Ô tô","🚗","Xe buýt","🚌"],
+    ["Phương tiện","Máy bay","✈️","Trực thăng","🚁"],
+    ["Thể thao","Bóng đá","⚽","Bóng rổ","🏀"],
+    ["Thiên nhiên","Cầu vồng","🌈","Sét","⚡"]
+  ];
+
+  var STORAGE_KEY = "aigd_state_v1";
+
+  function defaultState(){
+    var names = [];
+    for(var i=1;i<=5;i++) names.push("Người chơi " + i);
+    return {
+      players: names,
+      spyCount: 1,
+      bag: [],
+      cycle: 1,
+      score: { civ:0, spy:0 },
+      lastCaseNo: 0,
+      deckSize: PAIRS.length
+    };
+  }
+
+  function loadState(){
+    try{
+      var raw = localStorage.getItem(STORAGE_KEY);
+      if(!raw) return defaultState();
+      var parsed = JSON.parse(raw);
+      if(!parsed || !Array.isArray(parsed.players)) return defaultState();
+      if(parsed.deckSize !== PAIRS.length){
+        parsed.bag = [];
+        parsed.cycle = 1;
+        parsed.lastCaseNo = 0;
+        parsed.deckSize = PAIRS.length;
+      }
+      return parsed;
+    }catch(e){ return defaultState(); }
+  }
+
+  function saveState(){
+    try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }catch(e){}
+  }
+
+  var state = loadState();
+  var round = null; // { order:[playerIdx...], spySet:Set, pairIndex, swapped, currentStep, revealedOnce }
+
+  // ---------- view switching ----------
+  var views = ["setup","reveal","discuss","results"];
+  function showView(name){
+    views.forEach(function(v){
+      document.getElementById("view-"+v).hidden = (v!==name);
+    });
+    document.getElementById("editBtn").hidden = (name==="setup");
+  }
+
+  function renderScorebug(){
+    document.getElementById("scoreCiv").textContent = state.score.civ;
+    document.getElementById("scoreSpy").textContent = state.score.spy;
+  }
+
+  function renderCaseNo(){
+    var n = state.lastCaseNo || 0;
+    var label = "HỒ SƠ <b>" + String(n).padStart(2,"0") + "/" + PAIRS.length + "</b>";
+    if(state.cycle > 1) label += " &middot; vòng " + state.cycle;
+    document.getElementById("caseNoLabel").innerHTML = label;
+  }
+
+  // ---------- setup view ----------
+  function clampSpies(){
+    var maxSpies = Math.max(1, state.players.length - 2);
+    if(state.spyCount > maxSpies) state.spyCount = maxSpies;
+    if(state.spyCount < 1) state.spyCount = 1;
+  }
+
+  function renderSetup(){
+    document.getElementById("playersCount").textContent = state.players.length;
+    clampSpies();
+    document.getElementById("spiesCount").textContent = state.spyCount;
+
+    var wrap = document.getElementById("namesWrap");
+    wrap.innerHTML = "";
+    state.players.forEach(function(name, idx){
+      var row = document.createElement("div");
+      row.className = "name-input";
+      var span = document.createElement("span");
+      span.textContent = (idx+1) + ".";
+      var input = document.createElement("input");
+      input.type = "text";
+      input.value = name;
+      input.maxLength = 24;
+      input.setAttribute("aria-label", "Tên người chơi " + (idx+1));
+      input.addEventListener("input", function(){
+        state.players[idx] = input.value.trim() || ("Người chơi " + (idx+1));
+        saveState();
+      });
+      row.appendChild(span);
+      row.appendChild(input);
+      wrap.appendChild(row);
+    });
+  }
+
+  document.getElementById("playersMinus").addEventListener("click", function(){
+    if(state.players.length <= 3) return;
+    state.players.pop();
+    clampSpies();
+    saveState();
+    renderSetup();
+  });
+  document.getElementById("playersPlus").addEventListener("click", function(){
+    if(state.players.length >= 15) return;
+    state.players.push("Người chơi " + (state.players.length+1));
+    saveState();
+    renderSetup();
+  });
+  document.getElementById("spiesMinus").addEventListener("click", function(){
+    if(state.spyCount <= 1) return;
+    state.spyCount--;
+    saveState();
+    renderSetup();
+  });
+  document.getElementById("spiesPlus").addEventListener("click", function(){
+    var maxSpies = Math.max(1, state.players.length - 2);
+    if(state.spyCount >= maxSpies) return;
+    state.spyCount++;
+    saveState();
+    renderSetup();
+  });
+
+  var resetBtn = document.getElementById("resetBtn");
+  var resetArmed = false;
+  var resetTimer = null;
+  resetBtn.addEventListener("click", function(){
+    if(!resetArmed){
+      resetArmed = true;
+      resetBtn.textContent = "Chắc chắn xoá? Nhấn lần nữa";
+      resetTimer = setTimeout(function(){
+        resetArmed = false;
+        resetBtn.textContent = "Xoá toàn bộ tiến trình (20 hồ sơ)";
+      }, 3000);
+      return;
+    }
+    clearTimeout(resetTimer);
+    resetArmed = false;
+    resetBtn.textContent = "Xoá toàn bộ tiến trình (20 hồ sơ)";
+    state = defaultState();
+    saveState();
+    renderSetup();
+    renderScorebug();
+    renderCaseNo();
+  });
+
+  document.getElementById("editBtn").addEventListener("click", function(){
+    showView("setup");
+  });
+
+  // ---------- deck / round assignment ----------
+  function shuffledIndices(n){
+    var arr = [];
+    for(var i=0;i<n;i++) arr.push(i);
+    for(var j=arr.length-1;j>0;j--){
+      var k = Math.floor(Math.random()*(j+1));
+      var tmp = arr[j]; arr[j]=arr[k]; arr[k]=tmp;
+    }
+    return arr;
+  }
+
+  function drawPairIndex(){
+    if(!state.bag || state.bag.length===0){
+      state.bag = shuffledIndices(PAIRS.length);
+    }
+    var idx = state.bag.pop();
+    state.lastCaseNo = PAIRS.length - state.bag.length;
+    saveState();
+    return idx;
+  }
+
+  function startRound(){
+    if(state.bag.length===0 && state.lastCaseNo===PAIRS.length){
+      state.cycle++;
+    }
+    var pairIndex = drawPairIndex();
+
+    var order = shuffledIndices(state.players.length);
+    var spySet = {};
+    for(var i=0;i<state.spyCount;i++) spySet[order[i]] = true;
+
+    round = {
+      pairIndex: pairIndex,
+      swapped: Math.random() < 0.5,
+      order: order,
+      spySet: spySet,
+      currentStep: 0,
+      revealedOnce: false
+    };
+
+    renderCaseNo();
+    showView("reveal");
+    renderRevealStep();
+  }
+
+  document.getElementById("startBtn").addEventListener("click", startRound);
+  document.getElementById("nextRoundBtn").addEventListener("click", startRound);
+
+  // ---------- reveal view ----------
+  function currentWords(){
+    var p = PAIRS[round.pairIndex];
+    var civ = round.swapped ? {word:p[3], emoji:p[4]} : {word:p[1], emoji:p[2]};
+    var spy = round.swapped ? {word:p[1], emoji:p[2]} : {word:p[3], emoji:p[4]};
+    return { cat:p[0], civWord:civ.word, civEmoji:civ.emoji, spyWord:spy.word, spyEmoji:spy.emoji };
+  }
+
+  function renderProgressDots(){
+    var wrap = document.getElementById("progressDots");
+    wrap.innerHTML = "";
+    round.order.forEach(function(_, i){
+      var dot = document.createElement("i");
+      if(i < round.currentStep) dot.className = "done";
+      else if(i === round.currentStep) dot.className = "current";
+      wrap.appendChild(dot);
+    });
+  }
+
+  function renderRevealStep(){
+    var playerIdx = round.order[round.currentStep];
+    var name = state.players[playerIdx];
+    var isSpy = !!round.spySet[playerIdx];
+    var words = currentWords();
+
+    document.getElementById("revealName").textContent = name;
+    var zone = document.getElementById("cardZone");
+    zone.classList.remove("revealed");
+    zone.classList.toggle("is-spy", isSpy);
+    document.getElementById("cardRole").textContent = isSpy ? "BẠN LÀ GIÁN ĐIỆP" : "BẠN LÀ DÂN THƯỜNG";
+    document.getElementById("cardEmoji").textContent = isSpy ? words.spyEmoji : words.civEmoji;
+    document.getElementById("cardWord").textContent = isSpy ? words.spyWord : words.civWord;
+
+    round.revealedOnce = false;
+    document.getElementById("nextPlayerBtn").disabled = true;
+    renderProgressDots();
+  }
+
+  var cardZone = document.getElementById("cardZone");
+  function doReveal(){
+    cardZone.classList.add("revealed");
+    round.revealedOnce = true;
+    document.getElementById("nextPlayerBtn").disabled = false;
+  }
+  function doHide(){
+    cardZone.classList.remove("revealed");
+  }
+  cardZone.addEventListener("pointerdown", function(e){ e.preventDefault(); doReveal(); });
+  cardZone.addEventListener("pointerup", doHide);
+  cardZone.addEventListener("pointerleave", doHide);
+  cardZone.addEventListener("pointercancel", doHide);
+  cardZone.tabIndex = 0;
+  cardZone.setAttribute("role","button");
+  cardZone.setAttribute("aria-label","Giữ để xem hồ sơ mật của bạn");
+  cardZone.addEventListener("keydown", function(e){
+    if(e.code==="Space" || e.code==="Enter"){ e.preventDefault(); doReveal(); }
+  });
+  cardZone.addEventListener("keyup", function(e){
+    if(e.code==="Space" || e.code==="Enter"){ doHide(); }
+  });
+
+  document.getElementById("nextPlayerBtn").addEventListener("click", function(){
+    if(!round.revealedOnce) return;
+    round.currentStep++;
+    if(round.currentStep >= round.order.length){
+      showView("discuss");
+      resetTimerUI();
+    } else {
+      renderRevealStep();
+    }
+  });
+
+  // ---------- discussion timer ----------
+  var timerSeconds = 180;
+  var timerRunning = false;
+  var timerHandle = null;
+
+  function fmtTime(s){
+    var m = Math.floor(s/60), sec = s%60;
+    return String(m).padStart(2,"0") + ":" + String(sec).padStart(2,"0");
+  }
+  function renderTimer(){
+    document.getElementById("timerDisplay").textContent = fmtTime(Math.max(0,timerSeconds));
+  }
+  function resetTimerUI(){
+    stopTimer();
+    timerSeconds = 180;
+    renderTimer();
+    document.getElementById("timerToggle").textContent = "Bắt đầu";
+  }
+  function stopTimer(){
+    if(timerHandle) clearInterval(timerHandle);
+    timerHandle = null;
+    timerRunning = false;
+  }
+  document.getElementById("timerToggle").addEventListener("click", function(){
+    if(timerRunning){
+      stopTimer();
+      this.textContent = "Tiếp tục";
+    } else {
+      timerRunning = true;
+      this.textContent = "Tạm dừng";
+      timerHandle = setInterval(function(){
+        timerSeconds--;
+        if(timerSeconds<=0){ timerSeconds=0; stopTimer(); document.getElementById("timerToggle").textContent="Bắt đầu"; }
+        renderTimer();
+      },1000);
+    }
+  });
+  document.getElementById("timerAdd30").addEventListener("click", function(){
+    timerSeconds += 30;
+    renderTimer();
+  });
+  document.getElementById("timerReset").addEventListener("click", resetTimerUI);
+
+  document.getElementById("revealResultBtn").addEventListener("click", function(){
+    stopTimer();
+    renderResults();
+    showView("results");
+  });
+
+  // ---------- results view ----------
+  function renderResults(){
+    var words = currentWords();
+    document.getElementById("resultCat").textContent = "Hạng mục: " + words.cat;
+    document.getElementById("resultCivEmoji").textContent = words.civEmoji;
+    document.getElementById("resultCivWord").textContent = words.civWord;
+    document.getElementById("resultSpyEmoji").textContent = words.spyEmoji;
+    document.getElementById("resultSpyWord").textContent = words.spyWord;
+
+    var list = document.getElementById("spyList");
+    list.innerHTML = "";
+    round.order.forEach(function(playerIdx){
+      if(round.spySet[playerIdx]){
+        var chip = document.createElement("span");
+        chip.className = "chip";
+        chip.textContent = state.players[playerIdx];
+        list.appendChild(chip);
+      }
+    });
+
+    document.getElementById("nextRoundWrap").hidden = true;
+  }
+
+  function recordVerdict(winner){
+    if(winner==="civ") state.score.civ++;
+    else state.score.spy++;
+    saveState();
+    renderScorebug();
+    document.getElementById("nextRoundWrap").hidden = false;
+  }
+  document.getElementById("verdictCiv").addEventListener("click", function(){ recordVerdict("civ"); });
+  document.getElementById("verdictSpy").addEventListener("click", function(){ recordVerdict("spy"); });
+
+  // ---------- init ----------
+  renderSetup();
+  renderScorebug();
+  renderCaseNo();
+  showView("setup");
+})();
+</script>
+</body>
+</html>

@@ -197,6 +197,27 @@
     font-variant-numeric:tabular-nums;
   }
 
+  .voice-pick{
+    display:flex;
+    align-items:center;
+    gap:6px;
+    max-width:62%;
+  }
+  .voice-pick select{
+    flex:1;
+    min-width:0;
+    background:var(--card);
+    border:1px solid var(--line-strong);
+    border-radius:4px;
+    color:var(--text);
+    font-family:var(--font-body);
+    font-size:12.5px;
+    padding:7px 8px;
+  }
+  .voice-pick select:focus-visible{outline:2px solid var(--accent-2);outline-offset:1px;}
+  .voice-pick .btn{padding:7px 10px;font-size:13px;flex-shrink:0;}
+  #voiceRow[hidden]{display:none;}
+
   .names-wrap{
     margin-top:6px;
     max-height:190px;
@@ -284,6 +305,14 @@
     text-wrap:balance;
   }
 
+  .card-zone,
+  .card-zone *{
+    -webkit-touch-callout:none;
+    -webkit-user-select:none;
+    -moz-user-select:none;
+    -ms-user-select:none;
+    user-select:none;
+  }
   .card-zone{
     position:relative;
     background:var(--paper);
@@ -296,7 +325,6 @@
     justify-content:center;
     text-align:center;
     box-shadow: inset 0 0 0 1px rgba(0,0,0,.08);
-    user-select:none;
     -webkit-tap-highlight-color:transparent;
     touch-action:none;
   }
@@ -518,6 +546,17 @@
         </div>
       </div>
 
+      <div class="field-row" id="voiceRow">
+        <div>
+          <label for="voiceSelect">Giọng đọc</label>
+          <span class="hint" id="voiceHint">Đang tìm giọng tiếng Việt trên máy…</span>
+        </div>
+        <div class="voice-pick">
+          <select id="voiceSelect" aria-label="Chọn giọng đọc tiếng Việt"></select>
+          <button type="button" class="btn btn-ghost" id="voiceTestBtn" aria-label="Nghe thử giọng đọc">🔊</button>
+        </div>
+      </div>
+
       <div class="names-wrap" id="namesWrap"></div>
 
       <button class="btn btn-primary" id="startBtn">Triển khai nhiệm vụ</button>
@@ -641,7 +680,8 @@
       cycle: 1,
       score: { civ:0, spy:0 },
       lastCaseNo: 0,
-      deckSize: PAIRS.length
+      deckSize: PAIRS.length,
+      voiceName: null
     };
   }
 
@@ -844,11 +884,93 @@
     });
   }
 
+  var currentCardSpeech = "";
+  var viVoices = [];
+
+  function bestDefaultVoice(list){
+    var natural = list.filter(function(v){ return /natural|online|hoaimy|nam ?minh/i.test(v.name); });
+    if(natural.length) return natural[0];
+    var google = list.filter(function(v){ return /google/i.test(v.name); });
+    if(google.length) return google[0];
+    return list[0];
+  }
+
+  function renderVoiceOptions(){
+    var select = document.getElementById("voiceSelect");
+    var hint = document.getElementById("voiceHint");
+    var row = document.getElementById("voiceRow");
+
+    if(!("speechSynthesis" in window) || viVoices.length===0){
+      row.hidden = false;
+      select.hidden = true;
+      document.getElementById("voiceTestBtn").hidden = true;
+      hint.textContent = "Máy chưa có giọng tiếng Việt. Vào Cài đặt Windows > Giờ & Ngôn ngữ > Giọng nói để cài thêm.";
+      return;
+    }
+
+    select.hidden = false;
+    document.getElementById("voiceTestBtn").hidden = false;
+    hint.textContent = "Chọn giọng nghe tự nhiên nhất với bạn";
+
+    var previousValue = state.voiceName;
+    select.innerHTML = "";
+    viVoices.forEach(function(v){
+      var opt = document.createElement("option");
+      opt.value = v.name;
+      opt.textContent = v.name.replace(/^Microsoft\s+/i,"").replace(/^Google\s+/i,"Google ");
+      select.appendChild(opt);
+    });
+
+    var match = viVoices.find(function(v){ return v.name === previousValue; });
+    if(!match){
+      match = bestDefaultVoice(viVoices);
+      state.voiceName = match.name;
+      saveState();
+    }
+    select.value = match.name;
+  }
+
+  function refreshVoiceList(){
+    if(!("speechSynthesis" in window)) { renderVoiceOptions(); return; }
+    var all = window.speechSynthesis.getVoices();
+    viVoices = all.filter(function(v){ return v.lang && v.lang.toLowerCase().indexOf("vi")===0; });
+    renderVoiceOptions();
+  }
+
+  if("speechSynthesis" in window){
+    refreshVoiceList();
+    window.speechSynthesis.onvoiceschanged = refreshVoiceList;
+  }
+
+  document.getElementById("voiceSelect").addEventListener("change", function(e){
+    state.voiceName = e.target.value;
+    saveState();
+  });
+  document.getElementById("voiceTestBtn").addEventListener("click", function(){
+    speak("Xin chào, đây là giọng đọc của Điệp Viên Lộ Mặt.");
+  });
+
+  function speak(text){
+    if(!("speechSynthesis" in window)) return;
+    window.speechSynthesis.cancel();
+    var utter = new SpeechSynthesisUtterance(text);
+    utter.lang = "vi-VN";
+    var chosen = viVoices.find(function(v){ return v.name === state.voiceName; });
+    if(chosen) utter.voice = chosen;
+    utter.rate = 0.9;
+    window.speechSynthesis.speak(utter);
+  }
+  function stopSpeaking(){
+    if("speechSynthesis" in window) window.speechSynthesis.cancel();
+  }
+
   function renderRevealStep(){
+    stopSpeaking();
     var playerIdx = round.order[round.currentStep];
     var name = state.players[playerIdx];
     var isSpy = !!round.spySet[playerIdx];
     var words = currentWords();
+    var word = isSpy ? words.spyWord : words.civWord;
 
     document.getElementById("revealName").textContent = name;
     var zone = document.getElementById("cardZone");
@@ -856,7 +978,8 @@
     zone.classList.toggle("is-spy", isSpy);
     document.getElementById("cardRole").textContent = isSpy ? "BẠN LÀ GIÁN ĐIỆP" : "BẠN LÀ DÂN THƯỜNG";
     document.getElementById("cardEmoji").textContent = isSpy ? words.spyEmoji : words.civEmoji;
-    document.getElementById("cardWord").textContent = isSpy ? words.spyWord : words.civWord;
+    document.getElementById("cardWord").textContent = word;
+    currentCardSpeech = word;
 
     round.revealedOnce = false;
     document.getElementById("nextPlayerBtn").disabled = true;
@@ -868,9 +991,11 @@
     cardZone.classList.add("revealed");
     round.revealedOnce = true;
     document.getElementById("nextPlayerBtn").disabled = false;
+    speak(currentCardSpeech);
   }
   function doHide(){
     cardZone.classList.remove("revealed");
+    stopSpeaking();
   }
   cardZone.addEventListener("pointerdown", function(e){ e.preventDefault(); doReveal(); });
   cardZone.addEventListener("pointerup", doHide);
@@ -890,6 +1015,7 @@
     if(!round.revealedOnce) return;
     round.currentStep++;
     if(round.currentStep >= round.order.length){
+      stopSpeaking();
       showView("discuss");
       resetTimerUI();
     } else {

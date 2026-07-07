@@ -218,6 +218,39 @@
   .voice-pick .btn{padding:7px 10px;font-size:13px;flex-shrink:0;}
   #voiceRow[hidden]{display:none;}
 
+  .switch{
+    appearance:none;
+    border:none;
+    width:44px;
+    height:25px;
+    border-radius:20px;
+    background:var(--line-strong);
+    position:relative;
+    cursor:pointer;
+    flex-shrink:0;
+    padding:0;
+    transition:background .15s ease;
+  }
+  .switch .switch-knob{
+    position:absolute;
+    top:3px; left:3px;
+    width:19px; height:19px;
+    border-radius:50%;
+    background:var(--paper);
+    box-shadow:0 1px 2px rgba(0,0,0,.35);
+    transition:transform .15s ease;
+  }
+  .switch[aria-checked="true"]{
+    background:var(--accent-2);
+  }
+  .switch[aria-checked="true"] .switch-knob{
+    transform:translateX(19px);
+  }
+  .switch:focus-visible{outline:2px solid var(--accent-2);outline-offset:2px;}
+  @media (prefers-reduced-motion: reduce){
+    .switch, .switch .switch-knob{ transition:none; }
+  }
+
   .names-wrap{
     margin-top:6px;
     max-height:190px;
@@ -474,6 +507,35 @@
     color:var(--accent);
     border:1px solid rgba(193,57,43,.35);
   }
+  .chip.chip-loser{
+    background:rgba(207,159,63,.16);
+    color:var(--accent-2);
+    border:1px solid rgba(207,159,63,.4);
+  }
+
+  .penalty-block{
+    background:var(--card);
+    border:1px dashed var(--accent-2);
+    border-radius:5px;
+    padding:14px 16px;
+    margin-top:14px;
+    text-align:center;
+  }
+  .penalty-block .cat{
+    font-family:var(--font-mono);
+    font-size:10.5px;
+    letter-spacing:.16em;
+    text-transform:uppercase;
+    color:var(--text-muted);
+    margin-bottom:8px;
+  }
+  .penalty-block .spy-list{ justify-content:center; }
+  .penalty-text{
+    font-family:var(--font-display);
+    font-size:17px;
+    text-wrap:balance;
+    margin:8px 0 10px;
+  }
 
   .verdict-row{
     display:flex;
@@ -546,6 +608,16 @@
         </div>
       </div>
 
+      <div class="field-row">
+        <div>
+          <label for="voiceToggle">Đọc to từ bí mật</label>
+          <span class="hint">Hữu ích cho bé chưa biết chữ &middot; mặc định tắt</span>
+        </div>
+        <button type="button" class="switch" id="voiceToggle" role="switch" aria-checked="false" aria-label="Bật/tắt đọc to từ bí mật">
+          <span class="switch-knob"></span>
+        </button>
+      </div>
+
       <div class="field-row" id="voiceRow">
         <div>
           <label for="voiceSelect">Giọng đọc</label>
@@ -561,7 +633,7 @@
 
       <button class="btn btn-primary" id="startBtn">Triển khai nhiệm vụ</button>
       <div style="text-align:center;">
-        <button class="link-quiet" id="resetBtn">Xoá toàn bộ tiến trình (20 hồ sơ)</button>
+        <button class="link-quiet" id="resetBtn">Xoá toàn bộ tiến trình</button>
       </div>
     </div>
 
@@ -629,6 +701,13 @@
         <button class="btn btn-spy" id="verdictSpy">Gián điệp</button>
       </div>
 
+      <div class="penalty-block" id="penaltyBlock" hidden>
+        <div class="cat">🎉 Hình phạt cho đội thua</div>
+        <div class="spy-list" id="penaltyNames"></div>
+        <div class="penalty-text" id="penaltyText">—</div>
+        <button type="button" class="link-quiet" id="penaltyRerollBtn">🎲 Đổi hình phạt khác</button>
+      </div>
+
       <div class="next-round" id="nextRoundWrap" hidden>
         <button class="btn btn-primary" id="nextRoundBtn">Hồ sơ tiếp theo</button>
       </div>
@@ -645,27 +724,48 @@
   "use strict";
 
   // [ hạng mục, từ dân thường, emoji dân thường, từ gián điệp, emoji gián điệp ]
+  // Chọn từ + emoji đơn giản, quen thuộc, khớp nghĩa trực tiếp để trẻ nhỏ chưa biết chữ vẫn chơi được.
   var PAIRS = [
-    ["Đồ uống","Cà phê","☕","Trà","🍵"],
-    ["Đồ uống","Trà sữa","🧋","Sinh tố","🥤"],
-    ["Món ăn","Phở","🍜","Bún bò","🍲"],
-    ["Món ăn","Bánh mì","🥖","Bánh bao","🥟"],
-    ["Món ăn","Pizza","🍕","Mì Ý","🍝"],
-    ["Món ăn","Sushi","🍣","Sashimi","🐟"],
-    ["Động vật","Chó","🐶","Sói","🐺"],
-    ["Động vật","Mèo","🐱","Hổ","🐯"],
-    ["Động vật","Cá voi","🐋","Cá heo","🐬"],
-    ["Động vật","Voi","🐘","Tê giác","🦏"],
-    ["Nghề nghiệp","Bác sĩ","🩺","Y tá","💉"],
-    ["Nghề nghiệp","Cảnh sát","👮","Bộ đội","🎖️"],
-    ["Địa điểm","Biển","🏖️","Hồ","🏞️"],
-    ["Địa điểm","Núi","⛰️","Đồi","🌄"],
-    ["Đồ vật","Laptop","💻","Máy tính bàn","🖥️"],
-    ["Phương tiện","Xe máy","🏍️","Xe đạp","🚲"],
+    ["Trái cây","Quả táo","🍎","Quả chuối","🍌"],
+    ["Trái cây","Quả dưa hấu","🍉","Quả cam","🍊"],
+    ["Động vật","Chó","🐶","Mèo","🐱"],
+    ["Động vật","Sư tử","🦁","Hổ","🐯"],
+    ["Động vật","Voi","🐘","Hươu cao cổ","🦒"],
+    ["Động vật","Cá","🐟","Cá voi","🐋"],
+    ["Động vật","Gà","🐔","Vịt","🦆"],
+    ["Côn trùng","Ong","🐝","Bướm","🦋"],
     ["Phương tiện","Ô tô","🚗","Xe buýt","🚌"],
+    ["Phương tiện","Xe máy","🏍️","Xe đạp","🚲"],
     ["Phương tiện","Máy bay","✈️","Trực thăng","🚁"],
-    ["Thể thao","Bóng đá","⚽","Bóng rổ","🏀"],
-    ["Thiên nhiên","Cầu vồng","🌈","Sét","⚡"]
+    ["Phương tiện","Thuyền","⛵","Tàu thủy","🚢"],
+    ["Đồ ăn","Bánh mì","🥖","Bánh bao","🥟"],
+    ["Đồ ăn","Pizza","🍕","Bánh donut","🍩"],
+    ["Đồ ăn","Kem","🍦","Bánh kem","🎂"],
+    ["Đồ uống","Sữa","🥛","Nước cam","🧃"],
+    ["Thiên nhiên","Mặt trời","☀️","Mặt trăng","🌙"],
+    ["Thiên nhiên","Cầu vồng","🌈","Sét","⚡"],
+    ["Đồ vật","Quả bóng","⚽","Diều","🪁"],
+    ["Đồ vật","Giày","👟","Dép","🩴"],
+    ["Trái cây","Quả dâu tây","🍓","Quả nho","🍇"],
+    ["Trái cây","Quả dứa","🍍","Quả xoài","🥭"],
+    ["Động vật","Khỉ","🐵","Gấu","🐻"],
+    ["Động vật","Ngựa","🐴","Bò","🐄"],
+    ["Động vật","Cừu","🐑","Heo","🐷"],
+    ["Động vật","Thỏ","🐰","Sóc","🐿️"],
+    ["Động vật","Rùa","🐢","Ốc sên","🐌"],
+    ["Động vật","Cá sấu","🐊","Rắn","🐍"],
+    ["Khủng long","Khủng long cổ dài","🦕","Khủng long bạo chúa","🦖"],
+    ["Côn trùng","Nhện","🕷️","Bọ rùa","🐞"],
+    ["Chim","Chim cánh cụt","🐧","Cú","🦉"],
+    ["Phương tiện","Xe cứu hỏa","🚒","Xe cứu thương","🚑"],
+    ["Phương tiện","Xe tải","🚚","Máy kéo","🚜"],
+    ["Phương tiện","Tàu hỏa","🚂","Tàu điện ngầm","🚇"],
+    ["Phương tiện","Xe đua","🏎️","Xe cảnh sát","🚓"],
+    ["Đồ ăn","Trứng","🥚","Phô mai","🧀"],
+    ["Đồ ăn","Bỏng ngô","🍿","Kẹo","🍬"],
+    ["Đồ uống","Trà sữa","🧋","Nước ngọt có ga","🥤"],
+    ["Thiên nhiên","Mây","☁️","Mưa","🌧️"],
+    ["Thiên nhiên","Tuyết","❄️","Núi lửa","🌋"]
   ];
 
   var STORAGE_KEY = "aigd_state_v1";
@@ -681,7 +781,8 @@
       score: { civ:0, spy:0 },
       lastCaseNo: 0,
       deckSize: PAIRS.length,
-      voiceName: null
+      voiceName: null,
+      voiceEnabled: false
     };
   }
 
@@ -791,6 +892,8 @@
   });
 
   var resetBtn = document.getElementById("resetBtn");
+  var resetBtnDefaultLabel = "Xoá toàn bộ tiến trình (" + PAIRS.length + " hồ sơ)";
+  resetBtn.textContent = resetBtnDefaultLabel;
   var resetArmed = false;
   var resetTimer = null;
   resetBtn.addEventListener("click", function(){
@@ -799,13 +902,13 @@
       resetBtn.textContent = "Chắc chắn xoá? Nhấn lần nữa";
       resetTimer = setTimeout(function(){
         resetArmed = false;
-        resetBtn.textContent = "Xoá toàn bộ tiến trình (20 hồ sơ)";
+        resetBtn.textContent = resetBtnDefaultLabel;
       }, 3000);
       return;
     }
     clearTimeout(resetTimer);
     resetArmed = false;
-    resetBtn.textContent = "Xoá toàn bộ tiến trình (20 hồ sơ)";
+    resetBtn.textContent = resetBtnDefaultLabel;
     state = defaultState();
     saveState();
     renderSetup();
@@ -845,8 +948,9 @@
     var pairIndex = drawPairIndex();
 
     var order = shuffledIndices(state.players.length);
+    var spyPool = shuffledIndices(state.players.length);
     var spySet = {};
-    for(var i=0;i<state.spyCount;i++) spySet[order[i]] = true;
+    for(var i=0;i<state.spyCount;i++) spySet[spyPool[i]] = true;
 
     round = {
       pairIndex: pairIndex,
@@ -950,6 +1054,16 @@
     speak("Xin chào, đây là giọng đọc của Điệp Viên Lộ Mặt.");
   });
 
+  var voiceToggle = document.getElementById("voiceToggle");
+  function renderVoiceToggle(){
+    voiceToggle.setAttribute("aria-checked", state.voiceEnabled ? "true" : "false");
+  }
+  voiceToggle.addEventListener("click", function(){
+    state.voiceEnabled = !state.voiceEnabled;
+    saveState();
+    renderVoiceToggle();
+  });
+
   function speak(text){
     if(!("speechSynthesis" in window)) return;
     window.speechSynthesis.cancel();
@@ -991,7 +1105,7 @@
     cardZone.classList.add("revealed");
     round.revealedOnce = true;
     document.getElementById("nextPlayerBtn").disabled = false;
-    speak(currentCardSpeech);
+    if(state.voiceEnabled) speak(currentCardSpeech);
   }
   function doHide(){
     cardZone.classList.remove("revealed");
@@ -1092,14 +1206,76 @@
       }
     });
 
+    document.getElementById("penaltyBlock").hidden = true;
     document.getElementById("nextRoundWrap").hidden = true;
   }
+
+  var PENALTIES = [
+    "Giả tiếng gà gáy thật to 3 lần 🐔",
+    "Nhảy lò cò quanh phòng 5 vòng",
+    "Làm mặt xấu thật hài trong 5 giây",
+    "Hát một câu bài hát bất kỳ",
+    "Đi lạch bạch như chú vịt 5 bước 🦆",
+    "Vỗ tay thật to và hô: Tôi thua rồi!",
+    "Đứng yên như tượng trong 10 giây",
+    "Kể một câu chuyện cười cho cả nhóm nghe",
+    "Bắt chước tiếng kêu của một con vật bất kỳ",
+    "Nhảy như con thỏ 5 cái 🐰",
+    "Xoay một vòng rồi cúi chào cả nhóm",
+    "Giả làm siêu nhân bay trong 5 giây",
+    "Đếm từ 1 đến 10 bằng giọng robot",
+    "Nhảy múa theo điệu nhạc tưởng tượng trong 5 giây",
+    "Khen 3 điều tốt về đội thắng",
+    "Đi giật lùi 5 bước",
+    "Giả làm chú chó vẫy đuôi 5 giây 🐶",
+    "Nói thật hài hước: Tôi là điệp viên dở nhất!",
+    "Diễn một cảm xúc bằng nét mặt cho cả nhóm đoán",
+    "Đi bằng gót chân 5 bước",
+    "Giả làm ngôi sao nhạc pop, tạo dáng thật ngầu",
+    "Đọc bảng chữ cái từ A đến E bằng giọng ca sĩ",
+    "Nhắm mắt đoán tên 1 người trong nhóm chỉ bằng giọng nói",
+    "Nhảy dang tay dang chân 5 cái",
+    "Giữ thăng bằng một chân trong 10 giây",
+    "Vẽ một hình mặt cười lên lòng bàn tay mình",
+    "Kể tên 5 loại trái cây thật nhanh trong 5 giây",
+    "Giả làm người mẫu, đi catwalk qua cả phòng",
+    "Ôm một người bất kỳ trong nhóm và nói lời cảm ơn",
+    "Hét thật to: Lần sau tôi sẽ thắng!"
+  ];
+  var lastPenaltyIndex = -1;
+  function pickPenalty(){
+    if(PENALTIES.length<=1) return PENALTIES[0];
+    var idx;
+    do{ idx = Math.floor(Math.random()*PENALTIES.length); }while(idx===lastPenaltyIndex);
+    lastPenaltyIndex = idx;
+    return PENALTIES[idx];
+  }
+
+  function renderPenalty(winner){
+    var loserIsSpy = (winner === "civ");
+    var names = document.getElementById("penaltyNames");
+    names.innerHTML = "";
+    round.order.forEach(function(playerIdx){
+      if(!!round.spySet[playerIdx] === loserIsSpy){
+        var chip = document.createElement("span");
+        chip.className = "chip chip-loser";
+        chip.textContent = state.players[playerIdx];
+        names.appendChild(chip);
+      }
+    });
+    document.getElementById("penaltyText").textContent = pickPenalty();
+    document.getElementById("penaltyBlock").hidden = false;
+  }
+  document.getElementById("penaltyRerollBtn").addEventListener("click", function(){
+    document.getElementById("penaltyText").textContent = pickPenalty();
+  });
 
   function recordVerdict(winner){
     if(winner==="civ") state.score.civ++;
     else state.score.spy++;
     saveState();
     renderScorebug();
+    renderPenalty(winner);
     document.getElementById("nextRoundWrap").hidden = false;
   }
   document.getElementById("verdictCiv").addEventListener("click", function(){ recordVerdict("civ"); });
@@ -1109,6 +1285,7 @@
   renderSetup();
   renderScorebug();
   renderCaseNo();
+  renderVoiceToggle();
   showView("setup");
 })();
 </script>
